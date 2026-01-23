@@ -37,55 +37,102 @@ length(unique(metadata$cases))
 length(unique(metadata$cases.submitter_id))
 # 36 patients
 
+# Since there is some miss match between patient number and samples, might be good
+# to check more closely
+sample_count <- metadata %>% 
+  group_by(cases.submitter_id, sample_type) %>% 
+  summarise(n_samples = n()) %>% 
+  pivot_wider(
+    names_from = sample_type,
+    values_from = n_samples
+  )
+print(sample_count)
+# Each patient have different number of tumor vs normal samples:
+#   - Tumor only (patient only has 1 tumor data)
+#   - Normal only (patient only has 1 normal data)
+#   - Paired (patient has 1 tumor and 1 normal data)
 
-# ============= Download ==================
-# Download count data?
+
+# Might want to do two of the following approach:
+# 1. Paired analysis only: do DEA and GSEA on paired samples only 
+# 2. Supplement: treat all samples as unpaired
+
+# Get a list of patients with paired data
+# Clean up col names
+colnames(sample_count) <- c("cases.submitter_id", "tumor", "normal") 
+paired_patient <- sample_count %>% 
+  filter(tumor == 1 & normal == 1) %>% 
+  select(cases.submitter_id) %>% 
+  as.list()
+
+paired_patient <- paired_patient[[1]]
+
+# ============= Download data and some more exploration ==================
+# Download associated data. 
 GDCdownload(query = query)
 
-# Prepare into an R object?
-# Convert into a RangedSumarizeExperiment object
-# How is this different from SummarizeExperiment?
+# Convert the downloaded data into an R object suitable for analysis.
+# Since these are RNA-seq data, it will be a RangedSumarizeExperiment object
 data <- GDCprepare(query = query)
 
 # Some exploration of count data
-assay(data)
+exprs_data <- assay(data, "unstranded")
+dim(exprs_data)
+# 60660 genes and 44 samples
 
-# extracts and processes the necessary information from the TCGA data object, 
-# separating tumor and non-tumor samples.
-lt <- prepare_tcga(data)
 
-lt$all$sampleInfo[["group"]] <- fifelse(lt$all$sampleInfo$sample_type == "Primary Tumor", "Tumor", "Normal")
+# ================= PCA =================
 
-colData(vsd)$group <- lt$all$sampleInfo$group
+# First prep data for PCA
 
-# --------------
-dds <- DESeqDataSetFromMatrix(
-  countData = assay(data, "unstranded"),
-  colData   = colData(data),
-  design    = ~ 1
+# Some notes before doing PCA: 
+#   1. PCA needs expression data table to be transposed (row = samples, col = feature)
+#   2. Gene expression data must be transformed/normalized. This is to prevent the 
+#      highly expressed and/or highly variance genes to dominate the PCs, and correct
+#      for sequencing depth. 
+#         NOTE: This is not needed for DEA since some tools requires raw count input. 
+
+# For visualization (PCA or heatmap), 3 normalization techniques are recommended
+#   1. Transcript per million (TPM)
+#   2. Regularized Log (rlog) or Variance Stabilizing Transformation (VST)
+#   3. Log2(x+1)
+# Apparently it's best to use VST. BUT WHY? READ MORE INTO THIS!!
+
+
+# PCA:
+pca_data <- prcomp(
+  exprs_data %>% vst() %>% t()        
 )
 
-dds <- estimateSizeFactors(dds)
-vsd <- vst(dds, blind = TRUE)
+# PCA data is stored in "x" within the prcomp object. This contains:
+# col: PCs
+# row: samples
+pca_data$x %>% 
+  ggplot(aes(x=PC1, y=PC2, colour = metadata$sample_type)) + 
+  geom_point()
 
-pca <- prcomp(t(assay(vsd)))
 
-pca_df <- data.frame(
-  sample = colnames(vsd),
-  PC1 = pca$x[, 1],
-  PC2 = pca$x[, 2],
-  group = colData(vsd)$group
+# ================= DEA =================
+
+# First do paired analysis
+# Extract paired data
+paired_metadata <- metadata %>% 
+  filter(cases.submitter_id %in% paired_patient)
+
+# Subseting expression data to contain only paired samples
+paired_exprs_data <- exprs_data[, paired_metadata$cases]
+
+# Exploratory on PCA:
+pca_paired <- prcomp(
+  paired_exprs_data %>% vst() %>% t()        
 )
 
-ggplot(pca_df, aes(PC1, PC2, color = group)) +
-  geom_point(size = 3, alpha = 0.8) +
-  theme_bw() +
-  labs(
-    title = "PCA (VST normalized)",
-    x = paste0("PC1 (", round(100 * summary(pca)$importance[2,1], 1), "%)"),
-    y = paste0("PC2 (", round(100 * summary(pca)$importance[2,2], 1), "%)")
-  )
-# ---------------
+# PCA data is stored in "x" within the prcomp object. This contains:
+# col: PCs
+# row: samples
+pca_paired$x %>% 
+  ggplot(aes(x=PC1, y=PC2, colour = paired_metadata$sample_type)) + 
+  geom_point()
 
 
 
