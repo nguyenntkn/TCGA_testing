@@ -7,7 +7,10 @@
 
 
 
-# ============ 0. Loading required packages ============
+# ============ 0. Set up ============
+
+wd = "/Users/nguyennguyen/Documents/TCGA_testing"
+
 # install.packages(c('data.table', 'tidyverse'))
 # BiocManager::install(c('TCGAbiolinks', 'easybio', 'SummarizedExperiment',
 #                        'DESeq2', 'edgeR', 'EnhancedVolcano'))
@@ -87,7 +90,7 @@ dim(exprs_data) # 60660 genes and 44 samples
 
 # Subset metadata to paired patients
 paired_metadata <- metadata %>% 
-  filter(cases.submitter_id %in% paired_patient) 
+  filter(cases.submitter_id %in% paired_patients) 
 
 # Clean sample_type labels
 paired_metadata$sample_type <- gsub(" ", "", paired_metadata$sample_type)
@@ -164,30 +167,73 @@ dim(dge$counts)
 
 # Define experimental group
 group <- factor(paired_metadata$sample_type)
-# patient <- factor(paired_metadata$cases.submitter_id)
+patient <- factor(gsub("-", "_", paired_metadata$cases.submitter_id))
 
-# Design matrix (no intercept) 
-mm <- model.matrix(~ 0 + group)
-colnames(mm) <- levels(group)
+# Notes for Voom transformation:
+# 1. Counts are transformed to log2 counts per million reads (CPM), where “per million reads” 
+# is defined based on the normalization factors we calculated earlier.
+# 2. A linear model is fitted to the log2 CPM for each gene, and the residuals are calculated.
+# 3. A smoothed curve is fitted to the sqrt(residual standard deviation) by average expression 
+# (see red line in plot)
+# 4. The smoothed curve is used to obtain weights for each gene and sample that are passed into 
+# limma along with the log2 CPMs.
 
-# Voom transformation. 
-v <- voom(dge, mm, plot=T)
+
+# ----------- 6.1. Unpaired analysis --------------
+# This is just to see the difference between unpaired and paired analysis
+
+# Design model matrix (no intercept) 
+mm_unpaired <- model.matrix(~ 0 + group)
+
+# Voom transformation
+v_unpaired <- voom(dge, mm_unpaired, plot=T)
 
 # Fit linear model
-fit <- lmFit(y, mm)
+fit_unpaired <- lmFit(v_unpaired, mm_unpaired)
 
 # Define contrast: Tumor vs Normal
-contrast <- makeContrasts(
-  PrimaryTumor - SolidTissueNormal,
-  levels = mm
+contrast_unpaired <- makeContrasts(
+  groupPrimaryTumor - groupSolidTissueNormal,
+  levels = colnames(coef(fit_unpaired))
 )
 
-tmp <- contrasts.fit(fit, contrast)
-tmp <- eBayes(fit2)
+tmp_unpaired <- contrasts.fit(fit_unpaired, contrast_unpaired)
+tmp_unpaired <- eBayes(tmp_unpaired)
 
 
-top.table <- topTable(tmp, sort.by = "P", n = Inf)
-head(top.table, 20)
+top.table_unpaired <- topTable(tmp_unpaired, sort.by = "P", n = Inf)
+head(top.table_unpaired, 20)
+
+write.csv(top.table_unpaired, file = file.path(wd, "Data", "DE_unpaired.csv"), row.names = TRUE)
+
+
+# ----------- 6.2. Paired analysis --------------
+
+# Design model matrix (no intercept) 
+mm_paired <- model.matrix(~ 0 + group + patient)
+
+# Voom transformation. 
+v_paired <- voom(dge, mm_paired, plot=T)
+
+# Fit linear model
+fit_paired <- lmFit(v_paired, mm_paired)
+
+# Define contrast: Tumor vs Normal
+contrast_paired <- makeContrasts(
+  groupPrimaryTumor - groupSolidTissueNormal,
+  levels = colnames(coef(fit_paired))
+)
+
+tmp_paired <- contrasts.fit(fit_paired, contrast_paired)
+tmp_paired <- eBayes(tmp_paired)
+
+
+top.table_paired <- topTable(tmp_paired, coef = 1, sort.by = "P", n = Inf)
+head(top.table_paired, 20)
+
+write.csv(top.table_paired, file = file.path(wd, "Data", "DE_paired.csv"), row.names = TRUE)
+
+
 
 
 
@@ -197,6 +243,21 @@ EnhancedVolcano(top.table,
                 x = 'logFC',
                 y = 'P.Value',
                 pointSize = 0.5)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
