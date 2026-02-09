@@ -202,8 +202,8 @@ tmp_unpaired <- eBayes(tmp_unpaired)
 
 
 top.table_unpaired <- topTable(tmp_unpaired, sort.by = "P", n = Inf)
-head(top.table_unpaired, 20)
 
+# Export DGE results
 write.csv(top.table_unpaired, file = file.path(wd, "Data", "DE_unpaired.csv"), row.names = TRUE)
 
 
@@ -229,17 +229,18 @@ tmp_paired <- eBayes(tmp_paired)
 
 
 top.table_paired <- topTable(tmp_paired, coef = 1, sort.by = "P", n = Inf)
-head(top.table_paired, 20)
 
+# Export DGE results
 write.csv(top.table_paired, file = file.path(wd, "Data", "DE_paired.csv"), row.names = TRUE)
 
 
 
 
 
+
 # ============== Volcano plot ==================
-EnhancedVolcano(top.table,
-                lab = rownames(top.table),
+EnhancedVolcano(top.table_paired,
+                lab = rownames(top.table_paired),
                 x = 'logFC',
                 y = 'P.Value',
                 pointSize = 0.5)
@@ -271,6 +272,6 @@ cpm_threshold <- 1
 low_expr_genes <- which(apply(cpm(dge_0), 1, max) < cpm_threshold)
 dge <- dge_0[-low_expr_genes, ]
 
-v_0 <- voom(dge_0, mm, plot=T)    # Pre-filter
-v <- voom(dge, mm, plot=T)        # Post-filter
+v_0 <- voom(dge_0, mm_paired, plot=T)    # Pre-filter
+v <- voom(dge, mm_paired, plot=T)        # Post-filter
 
