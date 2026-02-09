@@ -9,11 +9,13 @@
 
 # ============ 0. Set up ============
 
-wd = "/Users/nguyennguyen/Documents/TCGA_testing"
+wd = "/Users/tknguyenhollandcollege.com/Documents/R/TestingTCGA"
 
 # install.packages(c('data.table', 'tidyverse'))
 # BiocManager::install(c('TCGAbiolinks', 'easybio', 'SummarizedExperiment',
-#                        'DESeq2', 'edgeR', 'EnhancedVolcano'))
+#                        'DESeq2', 'edgeR', 'EnhancedVolcano', 'clusterProfiler',
+#                        'org.Hs.eg.db', 'dotplot'))
+
 
 library('TCGAbiolinks')
 library('easybio')
@@ -23,8 +25,9 @@ library('DESeq2')
 library('tidyverse')
 library('edgeR')
 library('EnhancedVolcano')
-
-
+library('org.Hs.eg.db')
+library('clusterProfiler')
+library('dotplot')
 
 
 
@@ -234,11 +237,7 @@ top.table_paired <- topTable(tmp_paired, coef = 1, sort.by = "P", n = Inf)
 write.csv(top.table_paired, file = file.path(wd, "Data", "DE_paired.csv"), row.names = TRUE)
 
 
-
-
-
-
-# ============== Volcano plot ==================
+# ----------- 6.3. Volcano plots --------------
 EnhancedVolcano(top.table_paired,
                 lab = rownames(top.table_paired),
                 x = 'logFC',
@@ -249,15 +248,51 @@ EnhancedVolcano(top.table_paired,
 
 
 
+# ============== 7. GO enrichment analysis ==================
+paired_gene_list <- top.table_paired$logFC
 
+names(paired_gene_list) <- gsub("\\..*", "", row.names(top.table_paired))
 
+paired_gene_list <- na.omit(paired_gene_list)
 
+sorted_paired_gene_list = sort(paired_gene_list, decreasing = TRUE)
 
+head(sorted_paired_gene_list)
+is.numeric(sorted_paired_gene_list)
+!is.null(names(sorted_paired_gene_list))
 
+set.seed(1234)
 
+# gse <- gseGO(geneList=gene_list, 
+#              ont ="ALL",              # Ontology: biological process (BP), cellular components (CC), 
+#              # molecular function (MF) or all 3 (ALL)
+#              keyType = "ENTREZID",    # Gene list is named by Entrez IDs
+#              pvalueCutoff = 0.05,     # Only keep GO terms with p < 0.05
+#              verbose = TRUE,          # Print progress in console
+#              OrgDb = hs,              # Organism database: human
+#              seed = TRUE,             # Makes the permutation process reproducible
+#              pAdjustMethod = "none")  # "none" for raw p-value or 
+# # "BH" (Benjamin-Hochberg) for FDR correction.
 
+gse <- gseGO(geneList = sorted_paired_gene_list, 
+             ont ="ALL", 
+             keyType = "ENSEMBL", 
+             nPerm = 10000, 
+             minGSSize = 3, 
+             maxGSSize = 800, 
+             pvalueCutoff = 0.05, 
+             verbose = TRUE, 
+             OrgDb = org.Hs.eg.db, 
+             pAdjustMethod = "none")
 
-
+dotplot(gse,
+        x = "GeneRatio",
+        color = "p.adjust",
+        title = "Top 15 of GO Enrichment",
+        showCategory = 10,
+        label_format = 80,
+        split=".sign") +
+  facet_grid(.~.sign)
 
 
 
@@ -274,4 +309,3 @@ dge <- dge_0[-low_expr_genes, ]
 
 v_0 <- voom(dge_0, mm_paired, plot=T)    # Pre-filter
 v <- voom(dge, mm_paired, plot=T)        # Post-filter
-
