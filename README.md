@@ -1,7 +1,7 @@
 ## Analyzing RNA-Seq data from TCGA
 
 Cholangiocarcinoma (CCA) is a rare and aggressive malignancy arising from the bile duct epithelium, characterized by poor prognosis and limited therapeutic options. This project aims to explore the transcriptional landscape of CCA using RNA-seq data from the TCGA-CHOL cohort [1, 2].
-As an initial analysis and training exercise, we focus on paired tumor–normal samples to identify tumor-specific gene expression changes while controlling for inter-patient variability. Differential expression analysis is performed using a paired experimental design, followed by Gene Ontology (GO) enrichment analysis to characterize biological processes associated with tumor activation and suppression.
+As an initial analysis and training exercise, this project focuses on paired tumor–normal samples to identify tumor-specific gene expression changes while controlling for inter-patient variability. Differential expression analysis is performed using a paired experimental design, followed by Gene Ontology (GO) enrichment analysis to characterize biological processes associated with tumor activation and suppression.
 The workflow and statistical framework are adapted from limma-based vignette [3].
 
 ### Summary of Results
