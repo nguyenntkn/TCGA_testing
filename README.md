@@ -8,14 +8,11 @@ The workflow and statistical framework are adapted from limma-based vignette [3]
 For intitial practice, difference between paired tumor and normal tissue's gene expression profile will be analyzed by following this vignette:
 [https://cran.r-project.org/web/packages/easybio/vignettes/example_limma.html](https://ucdavis-bioinformatics-training.github.io/2018-June-RNA-Seq-Workshop/thursday/DE.html)
 
-<img width="865" height="414" alt="dotplotGO" src="https://github.com/user-attachments/assets/16fe8b21-2385-4e8f-9cd1-d1fd1a68507c" />
+<img width="877" height="442" alt="dotplotGO" src="https://github.com/user-attachments/assets/ee7ed080-3344-4946-92fb-769f80cf7cde" />
 
 GO enrichment analysis of differentially expressed genes highlights distinct biological programs altered in CCA tumors relative to matched normal tissues. 
-Activated GO terms were enriched in cell cycle regulation, chromosomal segregation, ...
-Meanwhile, suppressed GO terms were enriched in metabolism and specifically catabolism processes, ...
-These findings are consistent with known hallmarks of cancer in general and cholangiocarcinoma in specific, demonstrating the utility of paired RNA-seq analysis in uncovering tumor-intrinsic transcriptional changes.
-
-
+Activated GO terms were enriched in cell cycle regulation, chromosomal segregation, and mitotic processes, which are hallmarks of cancer in general.
+Meanwhile, suppressed GO terms were enriched in metabolism and specifically catabolism processes, corresponding to how cancer cells switch from catabolism to prioritize anabolism to promote growth.
 
 
 ### Reference
