@@ -14,7 +14,7 @@ wd = "/Users/tknguyenhollandcollege.com/Documents/R/TestingTCGA"
 # install.packages(c('data.table', 'tidyverse'))
 # BiocManager::install(c('TCGAbiolinks', 'easybio', 'SummarizedExperiment',
 #                        'DESeq2', 'edgeR', 'EnhancedVolcano', 'clusterProfiler',
-#                        'org.Hs.eg.db', 'dotplot'))
+#                        'org.Hs.eg.db', 'enrichplot'))
 
 
 library('TCGAbiolinks')
@@ -27,7 +27,7 @@ library('edgeR')
 library('EnhancedVolcano')
 library('org.Hs.eg.db')
 library('clusterProfiler')
-library('dotplot')
+library('enrichplot')
 
 
 
@@ -128,7 +128,9 @@ pca_data <- prcomp(paired_exprs_data %>% vst() %>% t())
 # PCA data is stored in "x" within the prcomp object (col-PCs, row-samples)
 pca_data$x %>% 
   ggplot(aes(x=PC1, y=PC2, colour = paired_metadata$sample_type)) + 
-  geom_point()
+  geom_point(size = 4) +
+  scale_color_discrete(name="Sample type") +
+  theme_classic()
 
 # -------------- 4.2. MDS plot ----------------
 # WHY?
@@ -200,10 +202,13 @@ contrast_unpaired <- makeContrasts(
   levels = colnames(coef(fit_unpaired))
 )
 
+# Apply the specified contrast
 tmp_unpaired <- contrasts.fit(fit_unpaired, contrast_unpaired)
+
+# Performs empirical Bayes moderation
 tmp_unpaired <- eBayes(tmp_unpaired)
 
-
+# Extract results
 top.table_unpaired <- topTable(tmp_unpaired, sort.by = "P", n = Inf)
 
 # Export DGE results
@@ -227,10 +232,13 @@ contrast_paired <- makeContrasts(
   levels = colnames(coef(fit_paired))
 )
 
+# Apply the specified contrast
 tmp_paired <- contrasts.fit(fit_paired, contrast_paired)
+
+# Performs empirical Bayes moderation
 tmp_paired <- eBayes(tmp_paired)
 
-
+# Extract results
 top.table_paired <- topTable(tmp_paired, coef = 1, sort.by = "P", n = Inf)
 
 # Export DGE results
@@ -251,6 +259,7 @@ EnhancedVolcano(top.table_paired,
 # ============== 7. GO enrichment analysis ==================
 paired_gene_list <- top.table_paired$logFC
 
+# Clean ensembl ID to remove everything after the "."
 names(paired_gene_list) <- gsub("\\..*", "", row.names(top.table_paired))
 
 paired_gene_list <- na.omit(paired_gene_list)
@@ -267,7 +276,7 @@ set.seed(1234)
 #              ont ="ALL",              # Ontology: biological process (BP), cellular components (CC), 
 #              # molecular function (MF) or all 3 (ALL)
 #              keyType = "ENTREZID",    # Gene list is named by Entrez IDs
-#              pvalueCutoff = 0.05,     # Only keep GO terms with p < 0.05
+#              pvalueCutoff = 0.05,     
 #              verbose = TRUE,          # Print progress in console
 #              OrgDb = hs,              # Organism database: human
 #              seed = TRUE,             # Makes the permutation process reproducible
@@ -275,15 +284,14 @@ set.seed(1234)
 # # "BH" (Benjamin-Hochberg) for FDR correction.
 
 gse <- gseGO(geneList = sorted_paired_gene_list, 
-             ont ="ALL", 
-             keyType = "ENSEMBL", 
-             nPerm = 10000, 
-             minGSSize = 3, 
-             maxGSSize = 800, 
-             pvalueCutoff = 0.05, 
-             verbose = TRUE, 
-             OrgDb = org.Hs.eg.db, 
-             pAdjustMethod = "none")
+             ont ="ALL",                # Ontology: biological process (BP), cellular components (CC), 
+                                        # molecular function (MF) or all 3 (ALL)
+             keyType = "ENSEMBL",       # Gene list is named by Ensembl IDs
+             pvalueCutoff = 0.05,       # Only keep GO terms with p < 0.05
+             verbose = TRUE,            # Print progress in console
+             OrgDb = org.Hs.eg.db,      # Organism database: human
+             seed = TRUE,               # Makes the permutation process reproducible
+             pAdjustMethod = "BH")
 
 dotplot(gse,
         x = "GeneRatio",
