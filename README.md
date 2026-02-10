@@ -5,8 +5,7 @@ As an initial analysis and training exercise, we focus on paired tumor–normal 
 The workflow and statistical framework are adapted from limma-based vignette [3].
 
 ### Summary of Results
-For intitial practice, difference between paired tumor and normal tissue's gene expression profile will be analyzed by following this vignette:
-[https://cran.r-project.org/web/packages/easybio/vignettes/example_limma.html](https://ucdavis-bioinformatics-training.github.io/2018-June-RNA-Seq-Workshop/thursday/DE.html)
+For intitial practice, difference between paired tumor and normal tissue's gene expression profile.
 
 <img width="877" height="442" alt="dotplotGO" src="https://github.com/user-attachments/assets/ee7ed080-3344-4946-92fb-769f80cf7cde" />
 
